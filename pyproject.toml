@@ -1,0 +1,11 @@
+[project]
+name = "isaaclab_proj"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "isaaclab[all,isaacsim]==2.3.2.post1",
+    "torch==2.7.0",
+    "torchvision==0.22.0",
+]
