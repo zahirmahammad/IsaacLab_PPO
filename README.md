@@ -31,7 +31,7 @@ Proximal Policy Optimization (PPO) implementation in PyTorch for robotic control
 2. Clone and setup the project:
    ```bash
    git clone <repository-url>
-   cd IsaacLab
+   cd IsaacLab_PPO
    uv sync
    ```
 
