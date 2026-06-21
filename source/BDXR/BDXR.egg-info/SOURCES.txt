@@ -1,0 +1,10 @@
+pyproject.toml
+setup.py
+BDXR/__init__.py
+BDXR/ui_extension_example.py
+BDXR.egg-info/PKG-INFO
+BDXR.egg-info/SOURCES.txt
+BDXR.egg-info/dependency_links.txt
+BDXR.egg-info/not-zip-safe
+BDXR.egg-info/requires.txt
+BDXR.egg-info/top_level.txt

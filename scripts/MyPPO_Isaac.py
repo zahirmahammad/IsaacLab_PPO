@@ -9,6 +9,7 @@ from typing import Tuple
 import gymnasium as gym
 from pathlib import Path
 import argparse
+import matplotlib.pyplot as plt
 
 
 from isaaclab.source.isaaclab.isaaclab.app import AppLauncher
@@ -23,6 +24,7 @@ from isaaclab.sensors import CameraCfg
 from pxr import UsdGeom, Gf
 import omni.usd
 from isaaclab.assets import AssetBaseCfg
+import BDXR.tasks  # noqa: F401
 
 # ===================================================================================
 # CONFIGURATION CLASS
@@ -33,7 +35,7 @@ class TrainingConfig:
     env_name: str
     num_envs: int = 256
     timesteps: int = 256
-    num_eval_envs: int = 20
+    # num_eval_envs: int = 20
     device: str = "cuda"
 
     # Training Hyperparameters
@@ -183,6 +185,10 @@ class PPOTrainer:
 
         done = torch.zeros(self.config.num_envs).to(self.config.device)
 
+        # Track returns for plotting
+        run_numbers = []
+        returns_list = []
+
         # rollout storage
         obs_arr = torch.zeros(self.config.timesteps, self.config.num_envs, self.obs_dim).to(self.config.device)
         actions_arr = torch.zeros(self.config.timesteps, self.config.num_envs, self.action_dim).to(self.config.device)
@@ -277,11 +283,17 @@ class PPOTrainer:
                     self.optimizer.step()
 
             loss_mean = np.mean(losses)
-            print(f"Run : {run+1:4d}/{num_runs} | Loss: {loss_mean:.4f} | Return: {returns.mean():.4f}")
+            current_return = returns.mean().item()
+            run_numbers.append(run + 1)
+            returns_list.append(current_return)
+            print(f"Run : {run+1:4d}/{num_runs} | Loss: {loss_mean:.4f} | Return: {current_return:.4f}")
 
             # Periodic evaluation
             if (run + 1) % divisor == 0:
                 self.evaluate(run + 1)
+
+        # Save training returns plot
+        self._save_training_plot(run_numbers, returns_list)
 
         self.env.close()
         print(f"\n{'='*60}")
@@ -330,6 +342,25 @@ class PPOTrainer:
         print(f"✓ Video saved: {video_path}")
         print(f"✓ Model saved: {model_path}\n")
 
+    def _save_training_plot(self, run_numbers, returns_list) -> None:
+        """Generate and save training returns plot as image"""
+        plt.figure(figsize=(12, 6))
+        plt.plot(run_numbers, returns_list, linewidth=2, marker='o', markersize=4)
+        plt.xlabel('Run Number', fontsize=12)
+        plt.ylabel('Return', fontsize=12)
+        plt.title(f'Training Returns - {self.config.env_name}', fontsize=14, fontweight='bold')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        
+        # Save the plot
+        normal_path = f"{self.config.output_dir}"
+        Path(normal_path).mkdir(parents=True, exist_ok=True)
+        plot_path = f"{normal_path}/training_returns.png"
+        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        print(f"✓ Training plot saved: {plot_path}")
+
 
 # ===================================================================================
 # TESTING AND ROLLOUTS
@@ -344,6 +375,7 @@ class PPOEvals:
         self.obs_dim = self.env.observation_space["policy"].shape[1]
         self.action_dim = self.env.action_space.shape[1]
 
+        # model_path = f"{self.config.output_dir}/models/760.pth"
         model_path = f"{self.config.output_dir}/models/304.pth"
         self.agent = Agent(self.obs_dim, self.action_dim).to(self.config.device)
         self.agent.load_state_dict(torch.load(model_path, map_location=self.config.device))
